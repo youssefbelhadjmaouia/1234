@@ -2,10 +2,11 @@ from fastapi import FastAPI, Request
 from ultralytics import YOLO
 from PIL import Image
 import io
+import traceback
 
 app = FastAPI()
 
-model = YOLO("yolov8n.pt")
+model = YOLO("best.pt")
 
 @app.get("/")
 def home():
@@ -14,19 +15,35 @@ def home():
 @app.post("/detect")
 async def detect(request: Request):
 
-    image_bytes = await request.body()
+    try:
+        image_bytes = await request.body()
 
-    image = Image.open(io.BytesIO(image_bytes))
+        print(f"Received bytes: {len(image_bytes)}")
 
-    results = model(image, conf=0.1)
+        image = Image.open(io.BytesIO(image_bytes))
 
-    detections = []
+        print(f"Image size: {image.size}")
 
-    for r in results:
-        for box in r.boxes:
-            detections.append({
-                "class": model.names[int(box.cls[0])],
-                "confidence": float(box.conf[0])
-            })
+        results = model(image, conf=0.1)
 
-    return {"detections": detections}
+        detections = []
+
+        for r in results:
+            for box in r.boxes:
+                detections.append({
+                    "class": model.names[int(box.cls[0])],
+                    "confidence": float(box.conf[0])
+                })
+
+        return {
+            "success": True,
+            "detections": detections
+        }
+
+    except Exception as e:
+        print(traceback.format_exc())
+
+        return {
+            "success": False,
+            "error": str(e)
+        }
