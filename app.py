@@ -1,34 +1,24 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, UploadFile, File
 from ultralytics import YOLO
 from PIL import Image
 import io
 
-print("Loading model...")
-
-model = YOLO("best.pt")
-
-print("Model loaded!")
-
 app = FastAPI()
 
-@app.get("/")
-def home():
-    return {"status": "running"}
+model = YOLO("yolov8n.pt")
 
 @app.post("/detect")
-async def detect(request: Request):
-
-    image_bytes = await request.body()
+async def detect(file: UploadFile = File(...)):
+    image_bytes = await file.read()
 
     image = Image.open(io.BytesIO(image_bytes))
 
-    results = model(image, conf=0.10)
+    results = model(image)
 
     detections = []
 
     for r in results:
         for box in r.boxes:
-
             detections.append({
                 "class": model.names[int(box.cls[0])],
                 "confidence": float(box.conf[0])
